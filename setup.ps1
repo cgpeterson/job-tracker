@@ -87,10 +87,12 @@ if ($mcps -match '(?im)^\s*gmail\b') {
         throw "That file isn't a Google OAuth credentials JSON (missing client_id/client_secret): $cred"
     }
 
-    $dest = Join-Path $env:USERPROFILE '.gmail-mcp'
+    $dest     = Join-Path $env:USERPROFILE '.gmail-mcp'
+    $credPath = Join-Path $dest 'gcp-oauth.keys.json'
     New-Item -ItemType Directory -Force -Path $dest | Out-Null
-    Copy-Item $cred (Join-Path $dest 'gcp-oauth.keys.json') -Force
-    Write-Host "Saved credentials to $dest\gcp-oauth.keys.json"
+    Copy-Item $cred $credPath -Force
+    icacls $credPath /inheritance:r /grant:r "${env:USERNAME}:F" | Out-Null
+    Write-Host "Saved credentials to $credPath (user-only ACL)"
 
     Write-Host ""
     Write-Host "Running Gmail MCP auth -- a browser tab will open for Google's consent screen."

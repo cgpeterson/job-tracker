@@ -90,6 +90,7 @@ else
     dest="$HOME/.gmail-mcp"
     mkdir -p "$dest"
     cp "$cred" "$dest/gcp-oauth.keys.json"
+    chmod 600 "$dest/gcp-oauth.keys.json"
     echo "Saved credentials to $dest/gcp-oauth.keys.json"
 
     echo ""

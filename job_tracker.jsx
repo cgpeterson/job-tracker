@@ -109,9 +109,17 @@ export default function JobTracker() {
     try {
       const text = await file.text();
       const data = JSON.parse(text);
-      if (Array.isArray(data.jobs))   { setJobs(data.jobs);    saveJSON("jt3_jobs", data.jobs); }
-      if (data.edits)                 { setEdits(data.edits);  saveJSON("jt3_edits", data.edits); }
-      if (data.settings) {
+      if (!data || typeof data !== "object" || Array.isArray(data)) {
+        throw new Error("file is not a JSON object");
+      }
+      const isPlainObject = v => v && typeof v === "object" && !Array.isArray(v);
+      if ("jobs"     in data && !Array.isArray(data.jobs))    throw new Error("'jobs' must be an array");
+      if ("edits"    in data && !isPlainObject(data.edits))   throw new Error("'edits' must be an object");
+      if ("settings" in data && !isPlainObject(data.settings)) throw new Error("'settings' must be an object");
+
+      if (Array.isArray(data.jobs))   { setJobs(data.jobs);   saveJSON("jt3_jobs",  data.jobs);  }
+      if (isPlainObject(data.edits))  { setEdits(data.edits); saveJSON("jt3_edits", data.edits); }
+      if (isPlainObject(data.settings)) {
         const merged = { ...DEFAULT_SETTINGS, ...data.settings };
         setSettings(merged);
         saveJSON("jt3_settings", merged);
