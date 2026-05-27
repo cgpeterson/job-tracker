@@ -3,102 +3,38 @@
 [![CI](https://github.com/cgpeterson/job-tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/cgpeterson/job-tracker/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A small local web app that classifies job application emails from your Gmail using the [Claude Code CLI](https://docs.anthropic.com/claude-code) and renders them in a sortable, filterable table.
+A local web app that pulls job-application emails from Gmail, has Claude classify each one as *Active / Interview / Offer / Rejected / Role Closed*, and renders them in a sortable, filterable table. Notes and priority overrides you add persist across refreshes.
 
-Click **Refresh from Gmail** → Claude reads your recent email (35 days by default — configurable), decides whether each thread is *Active / Interview / Offer / Rejected / Role Closed*, and returns a JSON array the UI persists to `localStorage`. A gear icon opens a settings panel for the lookback window, an optional Gmail search filter, silent-day thresholds and colors, the source list, auto-refresh on open, and export/import/reset.
+<!-- TODO: add screenshot at docs/screenshot.png -->
 
-> Add a screenshot at `docs/screenshot.png` after first launch and uncomment the line below.
-> <!-- ![Job Tracker UI](docs/screenshot.png) -->
-
-## How it works
+The interesting bit isn't the React UI — it's letting Claude do the classification instead of writing per-sender regex. Adding a new ATS, a new email vendor, or a new status takes a prompt edit in `vite.config.js`, not new code.
 
 ```
-┌──────────┐  click Refresh  ┌─────────────────┐    spawn    ┌────────────┐
-│ Browser  │  ────────────▶ │ Vite dev server │ ──────────▶ │ claude -p  │
-│ (React)  │                 │  /api/refresh   │  (stdin)    │ + MCP      │
-│          │ ◀────────────  │                 │ ◀────────── │   gmail    │
-└──────────┘  JSON of jobs   └─────────────────┘   stdout    └────────────┘
-                                                                    │
-                                                                    ▼
-                                                          ┌────────────────┐
-                                                          │ Your Gmail API │
-                                                          └────────────────┘
+Browser → /api/refresh → spawn `claude -p` → Gmail MCP → Gmail API
 ```
 
-The interesting part isn't the React UI — it's using an **LLM as the classifier**. There is no regex, no per-sender heuristic, no ATS-specific parsing. The prompt in `vite.config.js` describes the schema and the rules; Claude does the rest. Adding a new ATS, a new email vendor, or a new status takes a prompt edit, not new code.
+A gear icon opens settings for the lookback window, an optional Gmail search filter, silent-day thresholds and colors, the source list, auto-refresh on open, and JSON export/import.
 
 ## Setup
 
-**First time on this machine** — run the wizard. It installs Node, the Claude CLI, walks you through the one manual step (creating a Google OAuth client), registers the Gmail MCP server, and launches the app:
+First time on a machine:
 
 ```sh
 git clone https://github.com/cgpeterson/job-tracker
 cd job-tracker
 ./setup.ps1     # Windows
-# or
 ./setup.sh      # macOS / Linux
 ```
 
-The wizard cannot fully automate the Google Cloud Console part (Google requires you to do it under your own account); it opens the right pages, gives you a file picker for the downloaded credentials JSON, and handles everything else. See [`docs/gmail-mcp-setup.md`](docs/gmail-mcp-setup.md) for what to click.
+The wizard installs Node and the Claude CLI if missing, then walks through creating a Google OAuth client (the one step Google requires you to do by hand). See [`docs/gmail-mcp-setup.md`](docs/gmail-mcp-setup.md) for what to click.
 
-**After setup** — just run the launcher:
+After that, `./run.ps1` or `./run.sh` starts the dev server at <http://localhost:5173>.
 
-```sh
-./run.ps1       # Windows
-./run.sh        # macOS / Linux
-```
+## Notes
 
-The dev server opens at <http://localhost:5173>.
-
-## Files
-
-```
-job_tracker.jsx              main component (state, filters, sort, persistence)
-components/JobRow.jsx        one table row
-components/SettingsModal.jsx settings panel behind the gear icon
-lib.js                       pure helpers (parseJobsResponse, daysSince)
-lib.test.js                  unit tests for the above
-theme.js                     status + priority color maps
-settings.js                  default settings shape
-seed.json                    placeholder rows shown before first refresh
-main.jsx                     React entry
-styles.css                   theme variables + global element styles
-vite.config.js               Vite + the /api/refresh dev endpoint
-setup.ps1 / setup.sh         one-time setup wizard (Node, Claude CLI, Gmail MCP)
-run.ps1 / run.sh             day-to-day launcher (install deps if missing, start)
-docs/gmail-mcp-setup.md      walkthrough for the Google Cloud Console step
-.github/workflows/           CI: build + test on push/PR
-```
-
-## Design tradeoffs
-
-These are the choices a reviewer should know about, and what would have to change to undo them:
-
-**`localStorage` instead of a backend.** The app is single-user and runs on your machine. A backend would force me to handle auth, multi-tenancy, and Gmail OAuth for users that aren't me — none of which the use case justifies. Going multi-user means: real DB, an auth provider, server-side Gmail OAuth, and rate limiting on `/api/refresh`.
-
-**Spawn the Claude CLI instead of calling the Anthropic API directly.** The CLI already has Gmail MCP wired up and an authenticated session. Calling the API directly would mean re-implementing the MCP client, managing my own API key, and handling Gmail OAuth myself. The cost is process-spawn latency (~1–3s overhead per refresh) and a hard dependency on the CLI being on PATH. Worth it for a personal tool; not worth it for anything multi-user.
-
-**LLM as classifier, no rules engine.** Trading determinism for flexibility. The same Claude call could miscategorize an email today and get it right tomorrow if I tweak the prompt. The mitigation is that the UI lets me override status manually (via the priority/notes edits, plus an obvious next step would be a status dropdown per row). For high-stakes categorization you'd want a rules layer in front; for personal job tracking, "mostly right" is fine.
-
-**Inline styles instead of a CSS framework.** ~350 lines doesn't earn Tailwind's build complexity. The `--color-*` variables in `styles.css` give me dark mode for free via `prefers-color-scheme`. Cost: row styling lives in markup, which is harder to skim — mitigated by extracting `JobRow` to its own file.
-
-**No TypeScript.** The app is small enough that JSDoc on the two exported `lib.js` functions would catch as much as types would. TypeScript would add a build step, a tsconfig, and friction for any future contributor — not earned at this size.
-
-## Limitations
-
-- **Single user, localhost only.** No auth on `/api/refresh`. Fine because Vite binds to localhost; broken the moment you expose the port.
-- **Hard dependency on the Claude CLI.** If `claude` isn't on PATH or isn't authenticated, Refresh fails with a server-error banner.
-- **No retry / no rate limiting.** A held-down Refresh button will spawn N concurrent CLI processes.
-- **Classification is non-deterministic.** Same email can flip status across refreshes if the model is on the edge. Manual notes/priority persist across refreshes; classified fields do not.
-
-## Development
-
-```sh
-npm install
-npm run dev      # dev server on :5173
-npm test         # vitest
-npm run build    # production bundle
-```
+- Jobs, edits, and settings live in `localStorage`. The settings panel exports/imports the whole state as JSON for backup.
+- Classification is non-deterministic — the same email can flip status between refreshes if the model is on the edge. Manual notes and priority persist; the classified fields don't.
+- Depends on the Claude CLI being installed and authenticated. Without it, the Refresh button surfaces an error banner.
 
 ## License
 
