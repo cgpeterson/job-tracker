@@ -40,11 +40,10 @@ function claudeApi() {
         delete env.ANTHROPIC_API_KEY;
         delete env.ANTHROPIC_AUTH_TOKEN;
 
-        const proc = spawn(
-          "claude",
-          ["-p", "--verbose", "--allowedTools", "mcp__gmail"],
-          { shell: true, env }
-        );
+        // shell:true is required on Windows so the `claude.cmd` shim resolves.
+        // Passed as a single string (not args array) to avoid Node DEP0190 — safe here
+        // because every token is a hard-coded literal, never interpolated user input.
+        const proc = spawn("claude -p --verbose --allowedTools mcp__gmail", { shell: true, env });
 
         let out = "", err = "";
         proc.stdout.on("data", d => { const s = d.toString(); out += s; process.stdout.write(`${tag} OUT ${s}`); });
