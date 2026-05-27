@@ -7,7 +7,7 @@ A local web app that pulls job-application emails from Gmail, has Claude classif
 
 <!-- TODO: add screenshot at docs/screenshot.png -->
 
-The interesting bit isn't the React UI — it's letting Claude do the classification instead of writing per-sender regex. Adding a new ATS, a new email vendor, or a new status takes a prompt edit in `vite.config.js`, not new code.
+The interesting bit isn't the React UI, it's letting Claude do the classification instead of writing per-sender regex. Adding a new ATS, a new email vendor, or a new status takes a prompt edit in `vite.config.js`, not new code.
 
 ```
 Browser → /api/refresh → spawn `claude -p` → Gmail MCP → Gmail API
