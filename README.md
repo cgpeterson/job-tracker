@@ -5,7 +5,7 @@
 
 A small local web app that classifies job application emails from your Gmail using the [Claude Code CLI](https://docs.anthropic.com/claude-code) and renders them in a sortable, filterable table.
 
-Click **Refresh from Gmail** → Claude reads the last 35 days of email, decides whether each thread is *Active / Interview / Offer / Rejected / Role Closed*, and returns a JSON array the UI persists to `localStorage`.
+Click **Refresh from Gmail** → Claude reads your recent email (35 days by default — configurable), decides whether each thread is *Active / Interview / Offer / Rejected / Role Closed*, and returns a JSON array the UI persists to `localStorage`. A gear icon opens a settings panel for the lookback window, an optional Gmail search filter, silent-day thresholds and colors, the source list, auto-refresh on open, and export/import/reset.
 
 > Add a screenshot at `docs/screenshot.png` after first launch and uncomment the line below.
 > <!-- ![Job Tracker UI](docs/screenshot.png) -->
@@ -50,16 +50,18 @@ The dev server opens at <http://localhost:5173>.
 ## Files
 
 ```
-job_tracker.jsx        main component (state, filters, sort, persistence)
-components/JobRow.jsx  one table row
-lib.js                 pure helpers (parseJobsResponse, daysSince)
-lib.test.js            unit tests for the above
-theme.js               status + priority color maps
-seed.json              placeholder rows shown before first refresh
-main.jsx               React entry
-styles.css             theme variables + global element styles
-vite.config.js         Vite + the /api/refresh dev endpoint
-.github/workflows/     CI: build + test on push/PR
+job_tracker.jsx              main component (state, filters, sort, persistence)
+components/JobRow.jsx        one table row
+components/SettingsModal.jsx settings panel behind the gear icon
+lib.js                       pure helpers (parseJobsResponse, daysSince)
+lib.test.js                  unit tests for the above
+theme.js                     status + priority color maps
+settings.js                  default settings shape
+seed.json                    placeholder rows shown before first refresh
+main.jsx                     React entry
+styles.css                   theme variables + global element styles
+vite.config.js               Vite + the /api/refresh dev endpoint
+.github/workflows/           CI: build + test on push/PR
 ```
 
 ## Design tradeoffs
@@ -80,7 +82,6 @@ These are the choices a reviewer should know about, and what would have to chang
 
 - **Single user, localhost only.** No auth on `/api/refresh`. Fine because Vite binds to localhost; broken the moment you expose the port.
 - **Hard dependency on the Claude CLI.** If `claude` isn't on PATH or isn't authenticated, Refresh fails with a server-error banner.
-- **Lookback window is hard-coded at 35 days.** Configurable in `vite.config.js`; would be a good first settings-panel item.
 - **No retry / no rate limiting.** A held-down Refresh button will spawn N concurrent CLI processes.
 - **Classification is non-deterministic.** Same email can flip status across refreshes if the model is on the edge. Manual notes/priority persist across refreshes; classified fields do not.
 
