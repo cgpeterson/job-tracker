@@ -2,10 +2,10 @@ import { STATUS_CFG, PRI_CFG } from "../theme.js";
 
 const monthDay = d => d?.slice(5) || "—";
 
-export default function JobRow({ job, editKey, gmailUrl, setEdit, warnDays, alertDays }) {
+export default function JobRow({ job, editKey, gmailUrl, setEdit, warnDays, alertDays, warnColor, alertColor }) {
   const statusStyle   = STATUS_CFG[job.status] || STATUS_CFG.Active;
   const days          = job._days;
-  const dayFg         = days > alertDays ? "#c0392b" : days > warnDays ? "#e67e22" : "var(--color-text-secondary)";
+  const dayFg         = days > alertDays ? alertColor : days > warnDays ? warnColor : "var(--color-text-secondary)";
   const note          = job.notes || "";
   const priority      = job.priority || "";
   const priorityStyle = priority ? PRI_CFG[priority] : null;

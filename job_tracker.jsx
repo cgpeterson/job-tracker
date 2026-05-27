@@ -1,12 +1,12 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import seedData from "./seed.json";
 import JobRow from "./components/JobRow.jsx";
+import SettingsModal from "./components/SettingsModal.jsx";
 import { STATUS_CFG } from "./theme.js";
+import { DEFAULT_SETTINGS } from "./settings.js";
 import { daysSince, parseJobsResponse } from "./lib.js";
 
-const GMAIL_BASE        = "https://mail.google.com/mail/u/0/#all/";
-const WARN_DAYS_SILENT  = 7;
-const ALERT_DAYS_SILENT = 14;
+const GMAIL_BASE = "https://mail.google.com/mail/u/0/#all/";
 
 const STATUSES = Object.keys(STATUS_CFG);
 
@@ -39,20 +39,29 @@ function saveJSON(key, val) {
 }
 
 export default function JobTracker() {
+  const [settings, setSettings]         = useState(() => ({ ...DEFAULT_SETTINGS, ...loadJSON("jt3_settings", {}) }));
   const [jobs, setJobs]                 = useState(() => loadJSON("jt3_jobs", seedData));
   const [edits, setEdits]               = useState(() => loadJSON("jt3_edits", {}));
   const [loading, setLoading]           = useState(false);
   const [synced, setSynced]             = useState(null);
   const [error, setError]               = useState(null);
   const [search, setSearch]             = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState(settings.defaultStatusFilter);
   const [sourceFilter, setSourceFilter] = useState("All");
   const [sort, setSort]                 = useState({ key:"lastContactDate", dir:"desc" });
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const res  = await fetch("/api/refresh", { method: "POST" });
+      const res = await fetch("/api/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lookbackDays: settings.lookbackDays,
+          gmailQuery:   settings.gmailQuery,
+        }),
+      });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       const parsed = parseJobsResponse(data.text);
@@ -64,6 +73,10 @@ export default function JobTracker() {
     } finally {
       setLoading(false);
     }
+  }, [settings.lookbackDays, settings.gmailQuery]);
+
+  useEffect(() => {
+    if (settings.autoRefreshOnOpen) refresh();
   }, []);
 
   const setEdit = useCallback((id, field, val) => {
@@ -72,6 +85,48 @@ export default function JobTracker() {
       saveJSON("jt3_edits", next);
       return next;
     });
+  }, []);
+
+  const updateSettings = useCallback(next => {
+    setSettings(next);
+    saveJSON("jt3_settings", next);
+  }, []);
+
+  const handleExport = useCallback(() => {
+    const blob = new Blob(
+      [JSON.stringify({ jobs, edits, settings }, null, 2)],
+      { type: "application/json" }
+    );
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `job-tracker-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [jobs, edits, settings]);
+
+  const handleImport = useCallback(async file => {
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (Array.isArray(data.jobs))   { setJobs(data.jobs);    saveJSON("jt3_jobs", data.jobs); }
+      if (data.edits)                 { setEdits(data.edits);  saveJSON("jt3_edits", data.edits); }
+      if (data.settings) {
+        const merged = { ...DEFAULT_SETTINGS, ...data.settings };
+        setSettings(merged);
+        saveJSON("jt3_settings", merged);
+      }
+    } catch (err) {
+      alert(`Import failed: ${err.message}`);
+    }
+  }, []);
+
+  const handleReset = useCallback(() => {
+    if (!confirm("Reset all jobs, edits, and settings? This cannot be undone.")) return;
+    localStorage.removeItem("jt3_jobs");
+    localStorage.removeItem("jt3_edits");
+    localStorage.removeItem("jt3_settings");
+    location.reload();
   }, []);
 
   const merged = useMemo(() => jobs.map(job => ({
@@ -119,6 +174,7 @@ export default function JobTracker() {
         .note-input:focus { border-color: var(--color-border-secondary) !important; outline:none; }
         .stat-chip { transition: all 0.15s ease; }
         .stat-chip:hover { opacity:0.85; }
+        .icon-btn { padding:6px 10px; font-size:16px; line-height:1; }
       `}</style>
 
       {/* ── Header ── */}
@@ -133,11 +189,15 @@ export default function JobTracker() {
               : "Pre-loaded · click Refresh to pull live Gmail data"}
           </div>
         </div>
-        <button onClick={refresh} disabled={loading}
-          style={{ display:"flex", alignItems:"center", gap:7, padding:"7px 16px", fontSize:13, fontWeight:500, minWidth:168 }}>
-          <span className={`refresh-icon${loading?" spinning":""}`}>↻</span>
-          {loading ? "Syncing Gmail…" : "Refresh from Gmail"}
-        </button>
+        <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+          <button onClick={()=>setSettingsOpen(true)} className="icon-btn"
+            title="Settings" aria-label="Settings">⚙</button>
+          <button onClick={refresh} disabled={loading}
+            style={{ display:"flex", alignItems:"center", gap:7, padding:"7px 16px", fontSize:13, fontWeight:500, minWidth:168 }}>
+            <span className={`refresh-icon${loading?" spinning":""}`}>↻</span>
+            {loading ? "Syncing Gmail…" : "Refresh from Gmail"}
+          </button>
+        </div>
       </div>
 
       {/* ── Stat chips (clickable filters) ── */}
@@ -171,9 +231,7 @@ export default function JobTracker() {
           style={{ flex:1, minWidth:180 }} />
         <select value={sourceFilter} onChange={e=>setSourceFilter(e.target.value)} style={{ width:120 }}>
           <option value="All">All sources</option>
-          {["LinkedIn","Indeed","Direct","Other"].map(s=>(
-            <option key={s} value={s}>{s}</option>
-          ))}
+          {settings.sources.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
         {(search || statusFilter!=="All" || sourceFilter!=="All") &&
           <button onClick={()=>{ setSearch(""); setStatusFilter("All"); setSourceFilter("All"); }}
@@ -237,18 +295,32 @@ export default function JobTracker() {
                 editKey={job.id || String(i)}
                 gmailUrl={job.id ? GMAIL_BASE + job.id : null}
                 setEdit={setEdit}
-                warnDays={WARN_DAYS_SILENT}
-                alertDays={ALERT_DAYS_SILENT} />
+                warnDays={settings.warnDays}
+                alertDays={settings.alertDays}
+                warnColor={settings.warnColor}
+                alertColor={settings.alertColor} />
             ))}
           </tbody>
         </table>
       </div>
 
-      <div style={{ marginTop:8, fontSize:11, color:"var(--color-text-tertiary)", display:"flex", gap:16 }}>
+      <div style={{ marginTop:8, fontSize:11, color:"var(--color-text-tertiary)", display:"flex", gap:16, flexWrap:"wrap" }}>
         <span>↑ Click any row to open latest email in Gmail</span>
         <span>· Priority and notes persist across sessions</span>
-        <span>· Silent = days since last contact · <span style={{color:"#e67e22"}}>orange &gt;7</span> · <span style={{color:"#c0392b"}}>red &gt;14</span></span>
+        <span>
+          · Silent = days since last contact · <span style={{color:settings.warnColor}}>warn &gt;{settings.warnDays}</span> · <span style={{color:settings.alertColor}}>alert &gt;{settings.alertDays}</span>
+        </span>
       </div>
+
+      {settingsOpen && (
+        <SettingsModal
+          settings={settings}
+          onChange={updateSettings}
+          onClose={()=>setSettingsOpen(false)}
+          onExport={handleExport}
+          onImport={handleImport}
+          onReset={handleReset} />
+      )}
     </div>
   );
 }
