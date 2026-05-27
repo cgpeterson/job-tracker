@@ -2,9 +2,9 @@ import { useState, useMemo, useCallback } from "react";
 import seedData from "./seed.json";
 import JobRow from "./components/JobRow.jsx";
 import { STATUS_CFG } from "./theme.js";
+import { daysSince, parseJobsResponse } from "./lib.js";
 
 const GMAIL_BASE        = "https://mail.google.com/mail/u/0/#all/";
-const MS_PER_DAY        = 86400000;
 const WARN_DAYS_SILENT  = 7;
 const ALERT_DAYS_SILENT = 14;
 
@@ -23,11 +23,6 @@ const COLS = [
   { key:"_notes",          label:"Notes",        w:"auto" },
 ];
 
-function daysSince(d) {
-  if (!d) return null;
-  return Math.floor((Date.now() - new Date(d)) / MS_PER_DAY);
-}
-
 function loadJSON(key, fallback) {
   try {
     const raw = localStorage.getItem(key);
@@ -41,20 +36,6 @@ function loadJSON(key, fallback) {
 function saveJSON(key, val) {
   try { localStorage.setItem(key, JSON.stringify(val)); }
   catch (err) { console.warn(`Failed to save ${key}:`, err); }
-}
-
-function parseJobsResponse(text) {
-  const stripped = text.replace(/```[\w]*\n?|```\n?/g, "").trim();
-  const start = stripped.indexOf("[");
-  const end   = stripped.lastIndexOf("]");
-  if (start === -1 || end === -1) {
-    throw new Error("Claude response did not contain a JSON array");
-  }
-  try {
-    return JSON.parse(stripped.slice(start, end + 1));
-  } catch (err) {
-    throw new Error(`Could not parse Claude response as JSON: ${err.message}`);
-  }
 }
 
 export default function JobTracker() {
