@@ -29,20 +29,23 @@ The interesting part isn't the React UI — it's using an **LLM as the classifie
 
 ## Setup
 
-Prerequisites (all developer-tier; this is not a normie tool):
-
-1. [Node.js 18+](https://nodejs.org)
-2. [Claude Code CLI](https://docs.anthropic.com/claude-code) — signed in (`claude` runs in your terminal)
-3. Gmail MCP server configured for Claude (so `--allowedTools mcp__gmail` resolves)
-
-Then:
+**First time on this machine** — run the wizard. It installs Node, the Claude CLI, walks you through the one manual step (creating a Google OAuth client), registers the Gmail MCP server, and launches the app:
 
 ```sh
 git clone https://github.com/cgpeterson/job-tracker
 cd job-tracker
-./run.sh        # macOS / Linux
+./setup.ps1     # Windows
 # or
+./setup.sh      # macOS / Linux
+```
+
+The wizard cannot fully automate the Google Cloud Console part (Google requires you to do it under your own account); it opens the right pages, gives you a file picker for the downloaded credentials JSON, and handles everything else. See [`docs/gmail-mcp-setup.md`](docs/gmail-mcp-setup.md) for what to click.
+
+**After setup** — just run the launcher:
+
+```sh
 ./run.ps1       # Windows
+./run.sh        # macOS / Linux
 ```
 
 The dev server opens at <http://localhost:5173>.
@@ -61,6 +64,9 @@ seed.json                    placeholder rows shown before first refresh
 main.jsx                     React entry
 styles.css                   theme variables + global element styles
 vite.config.js               Vite + the /api/refresh dev endpoint
+setup.ps1 / setup.sh         one-time setup wizard (Node, Claude CLI, Gmail MCP)
+run.ps1 / run.sh             day-to-day launcher (install deps if missing, start)
+docs/gmail-mcp-setup.md      walkthrough for the Google Cloud Console step
 .github/workflows/           CI: build + test on push/PR
 ```
 
