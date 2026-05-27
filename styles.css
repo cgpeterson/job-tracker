@@ -65,3 +65,19 @@ button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.refresh-icon { display: inline-block; }
+.refresh-icon.spinning { animation: spin 0.8s linear infinite; }
+
+.job-row:hover td { background: var(--color-background-secondary) !important; }
+
+.sort-th:hover { color: var(--color-text-primary) !important; }
+
+.note-input:focus { border-color: var(--color-border-secondary) !important; outline: none; }
+
+.stat-chip { transition: all 0.15s ease; }
+.stat-chip:hover { opacity: 0.85; }
+
+.icon-btn { padding: 6px 10px; font-size: 16px; line-height: 1; }

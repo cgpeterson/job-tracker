@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeAll, afterAll } from "vitest";
-import { daysSince, parseJobsResponse } from "./lib.js";
+import { daysSince, parseJobsResponse, compareRows } from "./lib.js";
 
 describe("daysSince", () => {
   beforeAll(() => {
@@ -62,5 +62,32 @@ describe("parseJobsResponse", () => {
 
   test("throws a helpful error on malformed JSON", () => {
     expect(() => parseJobsResponse("[{broken}]")).toThrow(/Could not parse/);
+  });
+});
+
+describe("compareRows", () => {
+  const asc  = k => ({ key: k, dir: "asc"  });
+  const desc = k => ({ key: k, dir: "desc" });
+
+  test("sorts strings asc/desc", () => {
+    expect(compareRows({ company: "Acme" }, { company: "Beta" }, asc("company"))).toBeLessThan(0);
+    expect(compareRows({ company: "Acme" }, { company: "Beta" }, desc("company"))).toBeGreaterThan(0);
+  });
+
+  test("sorts _days as numbers", () => {
+    expect(compareRows({ _days: 5 },  { _days: 10 }, asc("_days"))).toBeLessThan(0);
+    expect(compareRows({ _days: 5 },  { _days: 10 }, desc("_days"))).toBeGreaterThan(0);
+  });
+
+  test("treats null _days as -1 (sorts first ascending)", () => {
+    expect(compareRows({ _days: null }, { _days: 0 }, asc("_days"))).toBeLessThan(0);
+  });
+
+  test("falls back to empty string for missing key", () => {
+    expect(compareRows({}, { role: "x" }, asc("role"))).toBeLessThan(0);
+  });
+
+  test("is case-insensitive for strings (localeCompare default)", () => {
+    expect(compareRows({ company: "acme" }, { company: "Beta" }, asc("company"))).toBeLessThan(0);
   });
 });

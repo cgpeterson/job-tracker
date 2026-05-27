@@ -4,7 +4,7 @@ import JobRow from "./components/JobRow.jsx";
 import SettingsModal from "./components/SettingsModal.jsx";
 import { STATUS_CFG } from "./theme.js";
 import { DEFAULT_SETTINGS } from "./settings.js";
-import { daysSince, parseJobsResponse } from "./lib.js";
+import { daysSince, parseJobsResponse, compareRows } from "./lib.js";
 
 const GMAIL_BASE = "https://mail.google.com/mail/u/0/#all/";
 
@@ -157,14 +157,7 @@ export default function JobTracker() {
     }
     if (statusFilter !== "All") result = result.filter(j => j.status === statusFilter);
     if (sourceFilter !== "All") result = result.filter(j => j.source === sourceFilter);
-    return [...result].sort((a, b) => {
-      const valA = sort.key === "_days" ? (a._days ?? -1) : (a[sort.key] ?? "");
-      const valB = sort.key === "_days" ? (b._days ?? -1) : (b[sort.key] ?? "");
-      if (typeof valA === "number") return sort.dir === "asc" ? valA - valB : valB - valA;
-      return sort.dir === "asc"
-        ? String(valA).localeCompare(String(valB))
-        : String(valB).localeCompare(String(valA));
-    });
+    return [...result].sort((a, b) => compareRows(a, b, sort));
   }, [merged, search, statusFilter, sourceFilter, sort]);
 
   const toggleSort = key => setSort(s => ({
@@ -173,18 +166,6 @@ export default function JobTracker() {
 
   return (
     <div style={{ fontFamily:"var(--font-sans)", padding:"1rem 0 3rem", minWidth:0 }}>
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .refresh-icon { display:inline-block; }
-        .refresh-icon.spinning { animation: spin 0.8s linear infinite; }
-        .job-row:hover td { background: var(--color-background-secondary) !important; }
-        .sort-th:hover { color: var(--color-text-primary) !important; }
-        .note-input:focus { border-color: var(--color-border-secondary) !important; outline:none; }
-        .stat-chip { transition: all 0.15s ease; }
-        .stat-chip:hover { opacity:0.85; }
-        .icon-btn { padding:6px 10px; font-size:16px; line-height:1; }
-      `}</style>
-
       {/* ── Header ── */}
       <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:"1rem", gap:8, flexWrap:"wrap" }}>
         <div>
