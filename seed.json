@@ -1,0 +1,24 @@
+[
+  {
+    "id": "example-1",
+    "company": "Example Corp",
+    "role": "Software Engineer",
+    "status": "Active",
+    "source": "Direct",
+    "appliedDate": "2026-01-15",
+    "lastContactDate": "2026-01-15",
+    "contactEmail": "careers@example.com",
+    "nextStep": "Await recruiter contact"
+  },
+  {
+    "id": "example-2",
+    "company": "Acme Inc",
+    "role": "Backend Developer",
+    "status": "Interview",
+    "source": "LinkedIn",
+    "appliedDate": "2026-01-10",
+    "lastContactDate": "2026-01-20",
+    "contactEmail": "recruiting@acme.com",
+    "nextStep": "Technical screen scheduled"
+  }
+]
