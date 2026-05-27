@@ -14,9 +14,9 @@ Click **Refresh from Gmail** → Claude reads the last 35 days of email, decides
 
 ```
 ┌──────────┐  click Refresh  ┌─────────────────┐    spawn    ┌────────────┐
-│ Browser  │ ──────────────▶ │ Vite dev server │ ──────────▶ │ claude -p  │
+│ Browser  │  ────────────▶ │ Vite dev server │ ──────────▶ │ claude -p  │
 │ (React)  │                 │  /api/refresh   │  (stdin)    │ + MCP      │
-│          │ ◀────────────── │                 │ ◀────────── │   gmail    │
+│          │ ◀────────────  │                 │ ◀────────── │   gmail    │
 └──────────┘  JSON of jobs   └─────────────────┘   stdout    └────────────┘
                                                                     │
                                                                     ▼
