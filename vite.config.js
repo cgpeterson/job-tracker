@@ -9,7 +9,7 @@ function buildPrompt(today, candidates) {
 
 Return ONLY a JSON array (no markdown fences, no preamble, no trailing text). One object per thread that is a genuine job application; skip threads that are clearly not (newsletters, job alerts, marketing). Keys:
 - id: the thread's id, copied verbatim
-- company: the hiring company (infer from sender/subject)
+- company: the hiring company if clear from the sender or subject, else "Check portal for company name" — never guess
 - role: the job title if discernible, else "Check portal for role title"
 - status: Active | Rejected | Interview | Offer | Role Closed
 - source: LinkedIn | Indeed | Direct | Other
@@ -45,10 +45,11 @@ function classify(prompt) {
     delete env.ANTHROPIC_API_KEY;
     delete env.ANTHROPIC_AUTH_TOKEN;
 
-    // Haiku is plenty for classifying pre-fetched structured data, and far faster.
+    // Sonnet: faster than Opus, but accurate enough to extract company/role
+    // reliably (Haiku hallucinated company names and named roles inconsistently).
     // shell:true so the Windows `claude.cmd` shim resolves; single string avoids
     // Node DEP0190 and is safe because the tokens are hard-coded literals.
-    const proc = spawn("claude -p --verbose --model haiku", { shell: true, env });
+    const proc = spawn("claude -p --verbose --model sonnet", { shell: true, env });
     let out = "", err = "";
     proc.stdout.on("data", d => { const s = d.toString(); out += s; process.stdout.write(`${tag} OUT ${s}`); });
     proc.stderr.on("data", d => { const s = d.toString(); err += s; process.stderr.write(`${tag} ERR ${s}`); });

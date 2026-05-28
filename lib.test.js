@@ -170,4 +170,15 @@ describe("dedupeApplications", () => {
     const [app] = dedupeApplications([{ id: "a", company: "X", role: "Y", contactEmail: "z@z.com" }]);
     expect(app.threadIds).toEqual(["a"]);
   });
+
+  test("a placeholder role folds into the real role for the same company+sender", () => {
+    const rows = [
+      { id: "a", company: "Autonomous", role: "Embedded SWE III",          contactEmail: "se@x.com", lastContactDate: "2026-05-22" },
+      { id: "b", company: "Autonomous", role: "Check portal for role title", contactEmail: "se@x.com", lastContactDate: "2026-05-22" },
+    ];
+    const apps = dedupeApplications(rows);
+    expect(apps).toHaveLength(1);
+    expect(apps[0].role).toBe("Embedded SWE III");
+    expect(apps[0].threadIds.sort()).toEqual(["a", "b"]);
+  });
 });
