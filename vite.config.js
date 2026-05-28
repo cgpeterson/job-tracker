@@ -45,9 +45,10 @@ function classify(prompt) {
     delete env.ANTHROPIC_API_KEY;
     delete env.ANTHROPIC_AUTH_TOKEN;
 
+    // Haiku is plenty for classifying pre-fetched structured data, and far faster.
     // shell:true so the Windows `claude.cmd` shim resolves; single string avoids
     // Node DEP0190 and is safe because the tokens are hard-coded literals.
-    const proc = spawn("claude -p --verbose", { shell: true, env });
+    const proc = spawn("claude -p --verbose --model haiku", { shell: true, env });
     let out = "", err = "";
     proc.stdout.on("data", d => { const s = d.toString(); out += s; process.stdout.write(`${tag} OUT ${s}`); });
     proc.stderr.on("data", d => { const s = d.toString(); err += s; process.stderr.write(`${tag} ERR ${s}`); });

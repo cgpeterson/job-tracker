@@ -71,8 +71,8 @@ export default function JobRow({ job, editKey, gmailUrl, setEdit, onDelete, warn
               background:"transparent", border:"0.5px solid transparent",
               borderRadius:4, color:"var(--color-text-secondary)" }} />
           {job.id && (
-            <button className="delete-btn" title="Remove and ignore this email"
-              onClick={()=>onDelete(job.id)}
+            <button className="delete-btn" title="Remove and ignore this application"
+              onClick={()=>onDelete(job.threadIds || [job.id])}
               style={{ padding:"2px 6px", fontSize:12, lineHeight:1, border:"none",
                 background:"transparent", color:"var(--color-text-tertiary)", cursor:"pointer" }}>
               ✕

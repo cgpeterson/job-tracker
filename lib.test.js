@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeAll, afterAll } from "vitest";
-import { daysSince, parseJobsResponse, compareRows, buildGmailQuery, mergeJobs } from "./lib.js";
+import { daysSince, parseJobsResponse, compareRows, buildGmailQuery, mergeJobs, dedupeApplications } from "./lib.js";
 
 describe("daysSince", () => {
   beforeAll(() => {
@@ -132,5 +132,42 @@ describe("mergeJobs", () => {
   test("skips rows without an id", () => {
     const merged = mergeJobs([{ id: "a" }, {}], [{}], []);
     expect(merged).toEqual([{ id: "a" }]);
+  });
+});
+
+describe("dedupeApplications", () => {
+  test("collapses same company+role+sender, keeping the latest status", () => {
+    const rows = [
+      { id: "t1", company: "Temporal", role: "SWE", contactEmail: "no-reply@x.io", status: "Active",   appliedDate: "2026-05-08", lastContactDate: "2026-05-08" },
+      { id: "t2", company: "Temporal", role: "SWE", contactEmail: "no-reply@x.io", status: "Rejected", appliedDate: "2026-05-26", lastContactDate: "2026-05-26" },
+    ];
+    const [app] = dedupeApplications(rows);
+    expect(dedupeApplications(rows)).toHaveLength(1);
+    expect(app.status).toBe("Rejected");
+    expect(app.appliedDate).toBe("2026-05-08");
+    expect(app.lastContactDate).toBe("2026-05-26");
+    expect(app.id).toBe("t2");
+    expect(app.threadIds.sort()).toEqual(["t1", "t2"]);
+  });
+
+  test("keeps rows distinct when the sender differs", () => {
+    const rows = [
+      { id: "a", company: "Balsam", role: "Eng", contactEmail: "shansen@balsambrands.com",  status: "Interview", lastContactDate: "2026-05-05" },
+      { id: "b", company: "Balsam", role: "Eng", contactEmail: "no-reply@balsambrands.com", status: "Active",    lastContactDate: "2026-05-01" },
+    ];
+    expect(dedupeApplications(rows)).toHaveLength(2);
+  });
+
+  test("keeps rows distinct when the role differs", () => {
+    const rows = [
+      { id: "a", company: "Affirm", role: "Apprentice",      contactEmail: "x@gh.io", lastContactDate: "2026-05-15" },
+      { id: "b", company: "Affirm", role: "Senior Backend",  contactEmail: "x@gh.io", lastContactDate: "2026-05-14" },
+    ];
+    expect(dedupeApplications(rows)).toHaveLength(2);
+  });
+
+  test("a single row passes through with its own id as the only thread", () => {
+    const [app] = dedupeApplications([{ id: "a", company: "X", role: "Y", contactEmail: "z@z.com" }]);
+    expect(app.threadIds).toEqual(["a"]);
   });
 });

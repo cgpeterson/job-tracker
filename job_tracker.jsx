@@ -4,7 +4,7 @@ import JobRow from "./components/JobRow.jsx";
 import SettingsModal from "./components/SettingsModal.jsx";
 import { STATUS_CFG } from "./theme.js";
 import { DEFAULT_SETTINGS } from "./settings.js";
-import { daysSince, parseJobsResponse, compareRows, mergeJobs } from "./lib.js";
+import { daysSince, parseJobsResponse, compareRows, mergeJobs, dedupeApplications } from "./lib.js";
 
 const GMAIL_BASE = "https://mail.google.com/mail/u/0/#all/";
 
@@ -99,15 +99,17 @@ export default function JobTracker() {
     saveJSON("jt3_settings", next);
   }, []);
 
-  const deleteJob = useCallback(id => {
-    if (!id) return;
+  const deleteJob = useCallback(threadIds => {
+    const ids = (Array.isArray(threadIds) ? threadIds : [threadIds]).filter(Boolean);
+    if (!ids.length) return;
+    const remove = new Set(ids);
     setJobs(prev => {
-      const next = prev.filter(j => j.id !== id);
+      const next = prev.filter(j => !remove.has(j.id));
       saveJSON("jt3_jobs", next);
       return next;
     });
     setSettings(prev => {
-      const next = { ...prev, ignoredIds: [...new Set([...prev.ignoredIds, id])] };
+      const next = { ...prev, ignoredIds: [...new Set([...prev.ignoredIds, ...ids])] };
       saveJSON("jt3_settings", next);
       return next;
     });
@@ -160,9 +162,9 @@ export default function JobTracker() {
 
   const merged = useMemo(() => {
     const ignored = new Set(settings.ignoredIds);
-    return jobs
-      .filter(job => !ignored.has(job.id))
-      .map(job => ({ ...job, ...(edits[job.id] || {}), _days: daysSince(job.lastContactDate) }));
+    const live = jobs.filter(job => !ignored.has(job.id));
+    return dedupeApplications(live)
+      .map(app => ({ ...app, ...(edits[app.id] || {}), _days: daysSince(app.lastContactDate) }));
   }, [jobs, edits, settings.ignoredIds]);
 
   const counts = useMemo(() => {
