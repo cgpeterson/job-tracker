@@ -7,13 +7,15 @@ A local web app that pulls job-application emails from Gmail, has Claude classif
 
 <!-- TODO: add screenshot at docs/screenshot.png -->
 
-The interesting bit isn't the React UI, it's letting Claude do the classification instead of writing per-sender regex. Adding a new ATS, a new email vendor, or a new status takes a prompt edit in `vite.config.js`, not new code.
+Discovery is deterministic and classification is the only fuzzy step: the dev server runs a fixed keyword search against the Gmail API itself, then hands Claude just that candidate list to label. No per-sender regex, and Claude never decides what to search for — adding a new ATS, vendor, or status is a prompt/keyword edit, not new code.
 
 ```
-Browser → /api/refresh → spawn `claude -p` → Gmail MCP → Gmail API
+Browser → /api/refresh ─→ Gmail API (keyword search) ─→ spawn `claude -p` (classify) ─→ JSON
 ```
 
-A gear icon opens settings for the lookback window, an optional Gmail search filter, silent-day thresholds and colors, the source list, auto-refresh on open, and JSON export/import.
+It reuses the OAuth token the Gmail MCP server stored under `~/.gmail-mcp/` (see Setup), refreshing it as needed — so classification runs without any MCP round-trips.
+
+A gear icon opens settings for the lookback window, the search keywords, silent-day thresholds and colors, the source list, auto-refresh on open, and JSON export/import. Each row has a ✕ that removes it and adds it to an ignore list excluded from future refreshes.
 
 ## Setup
 

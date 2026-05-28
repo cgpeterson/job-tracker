@@ -4,7 +4,7 @@ import JobRow from "./components/JobRow.jsx";
 import SettingsModal from "./components/SettingsModal.jsx";
 import { STATUS_CFG } from "./theme.js";
 import { DEFAULT_SETTINGS } from "./settings.js";
-import { daysSince, parseJobsResponse, compareRows } from "./lib.js";
+import { daysSince, parseJobsResponse, compareRows, mergeJobs } from "./lib.js";
 
 const GMAIL_BASE = "https://mail.google.com/mail/u/0/#all/";
 
@@ -59,21 +59,24 @@ export default function JobTracker() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           lookbackDays: settings.lookbackDays,
-          gmailQuery:   settings.gmailQuery,
+          searchQuery:  settings.searchQuery,
+          knownIds:     jobs.map(j => j.id).filter(Boolean),
+          ignoredIds:   settings.ignoredIds,
         }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       const parsed = parseJobsResponse(data.text);
-      setJobs(parsed);
+      const merged = mergeJobs(jobs, parsed, settings.ignoredIds);
+      setJobs(merged);
       setSynced(new Date());
-      saveJSON("jt3_jobs", parsed);
+      saveJSON("jt3_jobs", merged);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [settings.lookbackDays, settings.gmailQuery]);
+  }, [jobs, settings.lookbackDays, settings.searchQuery, settings.ignoredIds]);
 
   useEffect(() => {
     if (settings.autoRefreshOnOpen) refresh();
@@ -90,6 +93,20 @@ export default function JobTracker() {
   const updateSettings = useCallback(next => {
     setSettings(next);
     saveJSON("jt3_settings", next);
+  }, []);
+
+  const deleteJob = useCallback(id => {
+    if (!id) return;
+    setJobs(prev => {
+      const next = prev.filter(j => j.id !== id);
+      saveJSON("jt3_jobs", next);
+      return next;
+    });
+    setSettings(prev => {
+      const next = { ...prev, ignoredIds: [...new Set([...prev.ignoredIds, id])] };
+      saveJSON("jt3_settings", next);
+      return next;
+    });
   }, []);
 
   const handleExport = useCallback(() => {
@@ -137,9 +154,12 @@ export default function JobTracker() {
     location.reload();
   }, []);
 
-  const merged = useMemo(() => jobs.map(job => ({
-    ...job, ...(edits[job.id] || {}), _days: daysSince(job.lastContactDate),
-  })), [jobs, edits]);
+  const merged = useMemo(() => {
+    const ignored = new Set(settings.ignoredIds);
+    return jobs
+      .filter(job => !ignored.has(job.id))
+      .map(job => ({ ...job, ...(edits[job.id] || {}), _days: daysSince(job.lastContactDate) }));
+  }, [jobs, edits, settings.ignoredIds]);
 
   const counts = useMemo(() => {
     const c = {};
@@ -284,6 +304,7 @@ export default function JobTracker() {
                 editKey={job.id || String(i)}
                 gmailUrl={job.id ? GMAIL_BASE + job.id : null}
                 setEdit={setEdit}
+                onDelete={deleteJob}
                 warnDays={settings.warnDays}
                 alertDays={settings.alertDays}
                 warnColor={settings.warnColor}

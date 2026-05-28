@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeAll, afterAll } from "vitest";
-import { daysSince, parseJobsResponse, compareRows } from "./lib.js";
+import { daysSince, parseJobsResponse, compareRows, buildGmailQuery, mergeJobs } from "./lib.js";
 
 describe("daysSince", () => {
   beforeAll(() => {
@@ -89,5 +89,48 @@ describe("compareRows", () => {
 
   test("is case-insensitive for strings (localeCompare default)", () => {
     expect(compareRows({ company: "acme" }, { company: "Beta" }, asc("company"))).toBeLessThan(0);
+  });
+});
+
+describe("buildGmailQuery", () => {
+  test("wraps keywords and appends lookback", () => {
+    expect(buildGmailQuery({ searchQuery: "interview OR offer", lookbackDays: 35 }))
+      .toBe("(interview OR offer) newer_than:35d");
+  });
+
+  test("omits keywords when blank", () => {
+    expect(buildGmailQuery({ searchQuery: "  ", lookbackDays: 14 })).toBe("newer_than:14d");
+  });
+
+  test("omits lookback when falsy", () => {
+    expect(buildGmailQuery({ searchQuery: "x", lookbackDays: 0 })).toBe("(x)");
+  });
+});
+
+describe("mergeJobs", () => {
+  test("incoming updates an existing row", () => {
+    const existing = [{ id: "a", status: "Active" }];
+    const incoming = [{ id: "a", status: "Interview" }];
+    expect(mergeJobs(existing, incoming)).toEqual([{ id: "a", status: "Interview" }]);
+  });
+
+  test("keeps an existing row the refresh did not return", () => {
+    const merged = mergeJobs([{ id: "a" }, { id: "b" }], [{ id: "a" }]);
+    expect(merged.map(j => j.id).sort()).toEqual(["a", "b"]);
+  });
+
+  test("adds new rows from incoming", () => {
+    const merged = mergeJobs([{ id: "a" }], [{ id: "b" }]);
+    expect(merged.map(j => j.id).sort()).toEqual(["a", "b"]);
+  });
+
+  test("drops ignored ids from both sides", () => {
+    const merged = mergeJobs([{ id: "a" }, { id: "b" }], [{ id: "c" }], ["b", "c"]);
+    expect(merged.map(j => j.id)).toEqual(["a"]);
+  });
+
+  test("skips rows without an id", () => {
+    const merged = mergeJobs([{ id: "a" }, {}], [{}], []);
+    expect(merged).toEqual([{ id: "a" }]);
   });
 });

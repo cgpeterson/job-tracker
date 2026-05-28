@@ -21,10 +21,10 @@ export default function SettingsModal({ settings, onChange, onClose, onExport, o
             <input type="checkbox" checked={settings.autoRefreshOnOpen}
               onChange={e=>set("autoRefreshOnOpen", e.target.checked)} />
           </Field>
-          <Field label="Gmail search query">
-            <input type="text" placeholder="e.g. label:applications -from:noreply"
-              value={settings.gmailQuery}
-              onChange={e=>set("gmailQuery", e.target.value)}
+          <Field label="Search keywords (wide net)">
+            <input type="text"
+              value={settings.searchQuery}
+              onChange={e=>set("searchQuery", e.target.value)}
               style={{ flex:1 }} />
           </Field>
         </Section>
@@ -60,6 +60,11 @@ export default function SettingsModal({ settings, onChange, onClose, onExport, o
               <option value="All">All</option>
               {Object.keys(STATUS_CFG).map(s => <option key={s} value={s}>{s}</option>)}
             </select>
+          </Field>
+          <Field label={`Ignored emails (${settings.ignoredIds.length})`}>
+            <button onClick={()=>set("ignoredIds", [])} disabled={!settings.ignoredIds.length}>
+              Clear ignored
+            </button>
           </Field>
         </Section>
 

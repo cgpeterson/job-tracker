@@ -27,3 +27,22 @@ export function compareRows(a, b, sort) {
     ? String(valA).localeCompare(String(valB))
     : String(valB).localeCompare(String(valA));
 }
+
+export function buildGmailQuery({ searchQuery, lookbackDays }) {
+  const parts = [];
+  const q = (searchQuery || "").trim();
+  if (q) parts.push(`(${q})`);
+  if (lookbackDays) parts.push(`newer_than:${lookbackDays}d`);
+  return parts.join(" ");
+}
+
+// Merge a refresh result into the existing rows: incoming wins on conflicts,
+// existing rows the refresh didn't return are kept (a flaky search never drops
+// a row), and ignored ids are removed entirely.
+export function mergeJobs(existing, incoming, ignoredIds = []) {
+  const ignored = new Set(ignoredIds);
+  const byId = new Map();
+  for (const job of existing) if (job.id && !ignored.has(job.id)) byId.set(job.id, job);
+  for (const job of incoming) if (job.id && !ignored.has(job.id)) byId.set(job.id, job);
+  return [...byId.values()];
+}
