@@ -61,14 +61,30 @@ const header = (msg, name) =>
 
 const isoDay = ms => new Date(Number(ms)).toISOString().slice(0, 10);
 
+// Page through every thread matching `query`, up to maxPages * 100 threads.
+// `truncated` is true only if the cap is hit while more results remain.
+async function listThreadIds(query, token, maxPages = 10) {
+  const ids = [];
+  let pageToken = "";
+  for (let page = 0; page < maxPages; page++) {
+    const url = `${API}/threads?q=${encodeURIComponent(query)}&maxResults=100`
+      + (pageToken ? `&pageToken=${pageToken}` : "");
+    const res = await gapi(url, token);
+    for (const t of res.threads || []) ids.push(t.id);
+    pageToken = res.nextPageToken || "";
+    if (!pageToken) break;
+  }
+  return { ids, truncated: Boolean(pageToken) };
+}
+
 // Deterministic discovery: search Gmail with `query`, force-include `knownIds`,
 // return one candidate per thread (latest message's headers + thread snippet,
 // plus first/last contact dates) for Claude to classify.
-export async function searchCandidates({ query, knownIds = [], maxResults = 200 }) {
+export async function searchCandidates({ query, knownIds = [], maxPages = 10 }) {
   const token = await accessToken();
 
-  const list = await gapi(`${API}/threads?q=${encodeURIComponent(query)}&maxResults=${maxResults}`, token);
-  const ids = new Set((list.threads || []).map(t => t.id));
+  const { ids: found, truncated } = await listThreadIds(query, token, maxPages);
+  const ids = new Set(found);
   for (const id of knownIds) ids.add(id);
 
   const threads = await mapLimit([...ids], 10, id =>
@@ -90,5 +106,5 @@ export async function searchCandidates({ query, knownIds = [], maxResults = 200 
     };
   });
 
-  return { candidates, truncated: Boolean(list.nextPageToken) };
+  return { candidates, truncated };
 }

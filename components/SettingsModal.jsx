@@ -1,4 +1,5 @@
 import { STATUS_CFG } from "../theme.js";
+import { DEFAULT_SETTINGS } from "../settings.js";
 
 export default function SettingsModal({ settings, onChange, onClose, onExport, onImport, onReset }) {
   const set = (key, val) => onChange({ ...settings, [key]: val });
@@ -21,11 +22,13 @@ export default function SettingsModal({ settings, onChange, onClose, onExport, o
             <input type="checkbox" checked={settings.autoRefreshOnOpen}
               onChange={e=>set("autoRefreshOnOpen", e.target.checked)} />
           </Field>
-          <Field label="Search keywords (wide net)">
+          <Field label="Search keywords">
             <input type="text"
               value={settings.searchQuery}
               onChange={e=>set("searchQuery", e.target.value)}
               style={{ flex:1 }} />
+            <button title="Reset to default"
+              onClick={()=>set("searchQuery", DEFAULT_SETTINGS.searchQuery)}>↺</button>
           </Field>
         </Section>
 

@@ -88,7 +88,7 @@ function claudeApi() {
 
           const { candidates, truncated } = await searchCandidates({ query, knownIds });
           const kept = candidates.filter(c => !ignored.has(c.id));
-          if (truncated) console.log(`${tag} hit maxResults — some threads were not fetched`);
+          if (truncated) console.log(`${tag} hit page limit — some threads were not fetched`);
           console.log(`${tag} ${candidates.length} threads found, ${kept.length} after ignore`);
 
           if (kept.length === 0) { res.end(JSON.stringify({ text: "[]" })); return; }

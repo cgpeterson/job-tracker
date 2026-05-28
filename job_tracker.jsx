@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import seedData from "./seed.json";
 import JobRow from "./components/JobRow.jsx";
 import SettingsModal from "./components/SettingsModal.jsx";
@@ -51,7 +51,10 @@ export default function JobTracker() {
   const [sort, setSort]                 = useState({ key:"lastContactDate", dir:"desc" });
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  const inFlight = useRef(false);
   const refresh = useCallback(async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setLoading(true); setError(null);
     try {
       const res = await fetch("/api/refresh", {
@@ -75,6 +78,7 @@ export default function JobTracker() {
       setError(err.message);
     } finally {
       setLoading(false);
+      inFlight.current = false;
     }
   }, [jobs, settings.lookbackDays, settings.searchQuery, settings.ignoredIds]);
 
