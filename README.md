@@ -5,8 +5,6 @@
 
 A local web app that pulls job-application emails from Gmail, has Claude classify each one as *Active / Interview / Offer / Rejected / Role Closed*, and renders them in a sortable, filterable table. Notes and priority overrides you add persist across refreshes.
 
-<!-- TODO: add screenshot at docs/screenshot.png -->
-
 Discovery is deterministic and classification is the only fuzzy step: the dev server runs a fixed keyword search against the Gmail API itself, then hands Claude just that candidate list to label. No per-sender regex, and Claude never decides what to search for — adding a new ATS, vendor, or status is a prompt/keyword edit, not new code.
 
 ```
